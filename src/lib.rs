@@ -4,6 +4,7 @@ use serde::{
     ser::{SerializeMap, SerializeSeq},
     Serializer,
 };
+use smallvec::SmallVec;
 
 mod error;
 mod string;
@@ -66,31 +67,40 @@ impl serde::Serialize for PyObjectWrapper {
             if length == 0 {
                 serializer.serialize_map(Some(0))?.end()
             } else {
-                let mut map = serializer.serialize_map(Some(length as usize))?;
-                let items = unsafe { ffi::PyDict_Items(self.object) };
-                if length > 1 {
-                    unsafe { ffi::PyList_Sort(items) };
-                }
+                let mut items: SmallVec<[(&str, *mut ffi::PyObject); 32]> =
+                    SmallVec::with_capacity(length as usize);
+                let mut pos = 0isize;
                 let mut str_size: ffi::Py_ssize_t = 0;
-                for pos in 0..length {
-                    let item = unsafe { ffi::PyList_GetItem(items, pos) };
-                    let key = unsafe { ffi::PyTuple_GetItem(item, 0) };
-                    let value = unsafe { ffi::PyTuple_GetItem(item, 1) };
-                    // TODO. Check that it is a string first!
-                    let uni = unsafe { string::read_utf8_from_str(key, &mut str_size) };
-                    let slice = unsafe {
+                let mut key: *mut ffi::PyObject = std::ptr::null_mut();
+                let mut value: *mut ffi::PyObject = std::ptr::null_mut();
+                for _ in 0..length {
+                    unsafe {
+                        ffi::_PyDict_Next(
+                            self.object,
+                            &mut pos,
+                            &mut key,
+                            &mut value,
+                            std::ptr::null_mut(),
+                        )
+                    };
+                    let data = unsafe { string::read_utf8_from_str(key, &mut str_size) };
+                    let k = unsafe {
                         std::str::from_utf8_unchecked(std::slice::from_raw_parts(
-                            uni,
+                            data,
                             str_size as usize,
                         ))
                     };
-                    #[allow(clippy::integer_arithmetic)]
+                    items.push((k, value));
+                }
+                items.sort_unstable_by(|a, b| a.0.cmp(b.0));
+
+                let mut map = serializer.serialize_map(None)?;
+                for (key, val) in items.iter() {
                     map.serialize_entry(
-                        slice,
-                        &PyObjectWrapper::new(value, self.recursion_depth + 1),
+                        key,
+                        &PyObjectWrapper::new(*val, self.recursion_depth + 1),
                     )?;
                 }
-                unsafe { ffi::Py_DECREF(items) };
                 map.end()
             }
         } else if object_type == unsafe { types::LIST_TYPE } {
@@ -101,7 +111,7 @@ impl serde::Serialize for PyObjectWrapper {
             if length == 0 {
                 serializer.serialize_seq(Some(0))?.end()
             } else {
-                let mut sequence = serializer.serialize_seq(Some(length))?;
+                let mut sequence = serializer.serialize_seq(None)?;
                 for i in 0..length {
                     let elem = unsafe { ffi::PyList_GET_ITEM(self.object, i as isize) };
                     #[allow(clippy::integer_arithmetic)]
@@ -123,7 +133,6 @@ fn dumps(object: &PyAny) -> PyResult<String> {
 }
 
 // TODO:
-//  - Try to gather all dict items locally on a stack instead
 //  - handle recursion with a memo instead of counting recursion levels?
 
 /// Canonicalising JSON encoder
