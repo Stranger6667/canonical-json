@@ -6,14 +6,14 @@ serializers = pytest.mark.parametrize("func", (canonical_json.dumps, encode_cano
 
 
 @pytest.mark.parametrize(
-    "primitive",
+    "value",
     (None, 0, "A", 0.0, True, [], {}),
     ids=["null", "integer", "string", "number", "boolean", "array", "object"],
 )
 @serializers
 @pytest.mark.benchmark(group="Simple values")
-def test_primitives(benchmark, func, primitive):
-    benchmark(func, primitive)
+def test_primitives(benchmark, func, value):
+    benchmark(func, value)
 
 
 SCHEMA = {
@@ -121,3 +121,14 @@ SCHEMA = {
 @pytest.mark.benchmark(group="Complex schema")
 def test_complex(benchmark, func):
     benchmark(func, SCHEMA)
+
+
+@pytest.mark.parametrize(
+    "value",
+    ({"foo": 1},),
+    ids=["single-item-object"],
+)
+@serializers
+@pytest.mark.benchmark(group="Specific cases")
+def test_specific(benchmark, func, value):
+    benchmark(func, value)

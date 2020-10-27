@@ -68,7 +68,9 @@ impl serde::Serialize for PyObjectWrapper {
             } else {
                 let mut map = serializer.serialize_map(Some(length as usize))?;
                 let items = unsafe { ffi::PyDict_Items(self.object) };
-                unsafe { ffi::PyList_Sort(items) };
+                if length > 1 {
+                    unsafe { ffi::PyList_Sort(items) };
+                }
                 let mut str_size: ffi::Py_ssize_t = 0;
                 for pos in 0..length {
                     let item = unsafe { ffi::PyList_GetItem(items, pos) };
@@ -120,10 +122,9 @@ fn dumps(object: &PyAny) -> PyResult<String> {
     Ok(serde_json::to_string(&value).map_err(error::JSONError)?)
 }
 
-// TODO. Fix big numbers - format them with python?
-// TODO. Add a shortcut for the case when dict's len is 1 - no sorting needed
-// TODO. Try to gather all dict items locally on a stack instead
-// handle recursion with a memo instead of counting recursion levels?
+// TODO:
+//  - Try to gather all dict items locally on a stack instead
+//  - handle recursion with a memo instead of counting recursion levels?
 
 /// Canonicalising JSON encoder
 #[pymodule]
