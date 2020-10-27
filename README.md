@@ -7,9 +7,11 @@ It is a specialized JSON encoder for Python, written in Rust. Its use-case is to
 
 With this rule applied, it is possible to de-duplicate a list of JSON schemas, which plays a crucial role in the [hypothesis-jsonschema](https://github.com/Zac-HD/hypothesis-jsonschema) project.
 
-Currently, this project is in the early development stage but passes canonical encoding tests from `hypothesis-jsonschema`.
+This project is in the early development stage but passes most of canonical encoding tests from `hypothesis-jsonschema`, except:
 
-On average it performs **3-4.5x** faster than the Python version.
+- Handling of large integers (now there is a hardcoded `42` value);
+
+Currently, on average it performs **3-4.5x** faster than the Python version.
 
 Note, there is a lot of **unsafe** code.
 
