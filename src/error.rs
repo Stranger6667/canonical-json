@@ -1,6 +1,6 @@
 use std::fmt::{self, Display};
 
-use pyo3::exceptions::ValueError;
+use pyo3::exceptions::PyValueError;
 use pyo3::PyErr;
 use serde::{de, ser};
 
@@ -33,7 +33,7 @@ impl std::error::Error for Error {}
 
 impl From<Error> for PyErr {
     fn from(error: Error) -> Self {
-        ValueError::py_err(error.to_string())
+        PyValueError::new_err(error.to_string())
     }
 }
 
@@ -41,6 +41,6 @@ pub(crate) struct JSONError(pub serde_json::Error);
 
 impl From<JSONError> for PyErr {
     fn from(error: JSONError) -> Self {
-        ValueError::py_err(error.0.to_string())
+        PyValueError::new_err(error.0.to_string())
     }
 }

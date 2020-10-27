@@ -1,2 +1,11 @@
 /target
 Cargo.lock
+.benchmarks/
+.tox/
+__pycache__
+build/
+canonical_json.egg-info/
+database.egg-info/
+dist/
+.hypothesis
+*.so
