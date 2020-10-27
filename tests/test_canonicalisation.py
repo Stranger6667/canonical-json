@@ -6,8 +6,8 @@ The original author is Zac Hatfield-Dodds
 
 import json
 
-from hypothesis import given
 import canonical_json
+from hypothesis import given
 from hypothesis_jsonschema._from_schema import JSON_STRATEGY
 
 
