@@ -13,6 +13,14 @@ On average it performs **3-4.5x** faster than the Python version.
 
 Note, there is a lot of **unsafe** code.
 
+Install from sources via `pip`:
+
+```bash
+git clone https://github.com/Stranger6667/canonical-json.git
+cd canonical-json
+pip install -U .
+```
+
 Tests:
 
 ```bash
