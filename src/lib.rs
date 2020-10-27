@@ -26,7 +26,7 @@ impl PyObjectWrapper {
 }
 
 impl serde::Serialize for PyObjectWrapper {
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -49,8 +49,8 @@ impl serde::Serialize for PyObjectWrapper {
         } else if object_type == unsafe { types::FLOAT_TYPE } {
             let value = unsafe { ffi::PyFloat_AS_DOUBLE(self.object) };
             let integer_part = value.trunc();
-            if value - integer_part < f64::EPSILON {
-                serializer.serialize_i64(integer_part as i64)
+            if (value - integer_part) == 0.0f64 {
+                serializer.serialize_f64(integer_part)
             } else {
                 serializer.serialize_f64(value)
             }
