@@ -11,7 +11,7 @@ This project is in the early development stage but passes most of canonical enco
 
 - Handling of large integers (now there is a hardcoded `42` value);
 
-Currently, on average it performs **3-8.5x** faster than the Python version.
+Currently, on average it performs **3-9x** faster than the Python version.
 
 Note, there is a lot of **unsafe** code.
 

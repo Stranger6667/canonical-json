@@ -125,8 +125,8 @@ def test_complex(benchmark, func):
 
 @pytest.mark.parametrize(
     "value",
-    ({"foo": 1},),
-    ids=["single-item-object"],
+    ({"foo": 1}, list(range(10)), float(2 ** 64)),
+    ids=["single-item-object", "list-of-integers", "big-float"],
 )
 @serializers
 @pytest.mark.benchmark(group="Specific cases")
