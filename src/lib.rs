@@ -1,10 +1,14 @@
+use num_bigint::BigInt;
+use num_traits::cast::FromPrimitive;
 use pyo3::{ffi, prelude::*, types::PyAny, wrap_pyfunction, AsPyPointer};
 use serde::{
     ser::Error as SerdeError,
     ser::{SerializeMap, SerializeSeq},
     Serializer,
 };
+use serde_json::ser::{CompactFormatter, Formatter};
 use smallvec::SmallVec;
+use std::io;
 
 mod error;
 mod string;
@@ -22,6 +26,25 @@ impl PyObjectWrapper {
         Self {
             object,
             recursion_depth,
+        }
+    }
+}
+
+struct PyFormatter<F = CompactFormatter> {
+    default: F,
+}
+
+impl Formatter for PyFormatter {
+    #[inline]
+    fn write_f64<W>(&mut self, writer: &mut W, value: f64) -> io::Result<()>
+    where
+        W: ?Sized + io::Write,
+    {
+        if value - value.trunc() == 0.0 {
+            let integer = BigInt::from_f64(value).expect("Can't convert float");
+            writer.write_fmt(format_args!("{}", integer))
+        } else {
+            self.default.write_f64(writer, value)
         }
     }
 }
@@ -49,12 +72,7 @@ impl serde::Serialize for PyObjectWrapper {
             }
         } else if object_type == unsafe { types::FLOAT_TYPE } {
             let value = unsafe { ffi::PyFloat_AS_DOUBLE(self.object) };
-            let integer_part = value.trunc();
-            if (value - integer_part) == 0.0f64 {
-                serializer.serialize_f64(integer_part)
-            } else {
-                serializer.serialize_f64(value)
-            }
+            serializer.serialize_f64(value)
         } else if object_type == unsafe { types::BOOL_TYPE } {
             serializer.serialize_bool(self.object == unsafe { types::TRUE })
         } else if object_type == unsafe { types::NONE_TYPE } {
@@ -126,10 +144,27 @@ impl serde::Serialize for PyObjectWrapper {
     }
 }
 
+fn to_string<T>(value: &T) -> serde_json::Result<String>
+where
+    T: serde::Serialize,
+{
+    let mut output = Vec::with_capacity(256);
+    let formatter = PyFormatter {
+        default: CompactFormatter,
+    };
+    let mut serializer = serde_json::Serializer::with_formatter(&mut output, formatter);
+    value.serialize(&mut serializer)?;
+    let string = unsafe {
+        // There is only valid UTF-8
+        String::from_utf8_unchecked(output)
+    };
+    Ok(string)
+}
+
 #[pyfunction]
 fn dumps(object: &PyAny) -> PyResult<String> {
     let value = PyObjectWrapper::new(object.as_ptr(), 0);
-    Ok(serde_json::to_string(&value).map_err(error::JSONError)?)
+    Ok(to_string(&value).map_err(error::JSONError)?)
 }
 
 // TODO:
